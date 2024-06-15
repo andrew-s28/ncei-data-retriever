@@ -10,7 +10,7 @@ def _parse_args():
     parser = argparse.ArgumentParser(
         description='Retrieve daily summaries from NCEI data service API and save to netCDF file.'
     )
-    parser.add_argument('station', metavar='station', type=str,
+    parser.add_argument('station', metavar='station', type=str, nargs='+',
                         help='NCEI station ID (multiple stations can be separated by commas)')
     parser.add_argument('-i', '--info', action=argparse.BooleanOptionalAction,
                         help='Get station information only (doesn\'t retrieve data).')
@@ -175,7 +175,7 @@ if __name__ == '__main__':
     args = _parse_args()
     args = vars(args)
 
-    stations = args['station'].split(',')
+    stations = args['station']
     info = args['info']
     requested_start_date = args['start']
     requested_end_date = args['end']
@@ -210,7 +210,7 @@ if __name__ == '__main__':
             try:
                 # a bit of a hack, function returns None if station or date range is invalid,
                 # so it will thrown a TypeError when trying to unpack NoneType object
-                vars, lon, lat, start_date, end_date = _check_station_data(
+                vars, lon, lat, start_date, end_date, name = _check_station_data(
                     station, dataset, requested_start_date, requested_end_date
                 )
             except TypeError:

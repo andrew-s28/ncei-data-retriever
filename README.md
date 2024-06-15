@@ -31,9 +31,9 @@ The only data currently implemented are [NCEI Global Historical Climatology Netw
 TMIN (daily minimum temperature), TMAX (daily minimum temperature), PRCP (daily total precipitation), SNOW (daily total snowfall), and SNWD (total snow depth)
 
 Only a station ID is required. You can search for stations using the [NCEI Climate Data Online search tool](https://www.ncdc.noaa.gov/cdo-web/search).
-Multiple stations can be included using a comma-delimited (no spaces) list:
+Multiple stations can be included, separated by a space:
 ```
-python retrieve_daily_summaries.py USC00351877,USC00351877
+python retrieve_daily_summaries.py USC00351877 USC00351877
 ```
 
 Find help using the `--help` flag:
