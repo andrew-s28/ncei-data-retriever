@@ -95,6 +95,24 @@ def _check_station_data(station, dataset, start_date, end_date):
         if len(data['results']) == 0:
             print(f"No data available for {station}. Check station ID.")
             return None
+    elif request.status_code == 500:
+        print(f"Failed to retrieve data from {station}.")
+        print(f"{request.status_code}: {request.json()['errorMessage']}")
+        print(f"{request.json()['errors']['message']}")
+    else:
+        print(f"Failed to retrieve data from {station}.")
+        print(f"{request.status_code}: {request.json()['errorMessage']}")
+        if 'errors' in request.json():
+            for error in request.json()['errors']:
+                field_dict = {
+                    'startDate': 'start',
+                    'endDate': 'end',
+                }
+                if error['field'] in field_dict:
+                    print(f"Error in field {field_dict[error['field']]}: check input argument(s) '{field_dict[error['field']]}' and try again.")
+                else:
+                    print(f"Error in field {error['field']}: {error['message']}. Check station ID.")
+        return None
 
     # check if station has data for specified date range
     url = _construct_url(dataset, station, start_date, end_date, search=True)
@@ -128,6 +146,24 @@ def _check_station_data(station, dataset, start_date, end_date):
                 end_date = station_end_date.split('T')[0]
                 print(f"Adjusted end date to {end_date} at station {station} based on available data.")
             return vars_in_dataset, lon, lat, start_date, end_date
+    elif request.status_code == 500:
+        print(f"Failed to retrieve data from {station}.")
+        print(f"{request.status_code}: {request.json()['errorMessage']}")
+        print(f"{request.json()['errors']['message']}. Check date range.")
+    else:
+        print(f"Failed to retrieve data from {station}.")
+        print(f"{request.status_code}: {request.json()['errorMessage']}")
+        if 'errors' in request.json():
+            for error in request.json()['errors']:
+                field_dict = {
+                    'startDate': 'start',
+                    'endDate': 'end',
+                }
+                if error['field'] in field_dict:
+                    print(f"Error in field {field_dict[error['field']]}: check input argument(s) '{field_dict[error['field']]}' and try again.")
+                else:
+                    print(f"Error in field {error['field']}: {error['message']}")
+        return None
 
 
 if __name__ == '__main__':
