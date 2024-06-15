@@ -12,8 +12,8 @@ def _parse_args():
     )
     parser.add_argument('station', metavar='station', type=str,
                         help='NCEI station ID (multiple stations can be separated by commas)')
-    parser.add_argument('-i', '--info', metavar='info', type=str, default='false',
-                        help='Get station information only (doesn\'t retrieve data). Enter true or false (default: false).')
+    parser.add_argument('-i', '--info', action=argparse.BooleanOptionalAction,
+                        help='Get station information only (doesn\'t retrieve data).')
     parser.add_argument('-s', '--start', type=str, metavar='start', default='1750-01-01',
                         help='Start date in YYYY-MM-DD format (default: 1750-01-01)')
     parser.add_argument('-e', '--end', type=str, metavar='end', default=pd.Timestamp.now().strftime('%Y-%m-%d'),
@@ -23,9 +23,10 @@ def _parse_args():
     return parser.parse_args()
 
 
-def _get_global_attrs(dataset, station, lon, lat, start_date, end_date):
+def _get_global_attrs(dataset, station, lon, lat, start_date, end_date, name):
     global_attrs = {
         'station': station,
+        'station_name': name,
         'station_page': f"https://www.ncdc.noaa.gov/cdo-web/datasets/GHCND/stations/GHCND:{station}/detail",
         'station_longitude (deg E)': lon,
         'station_latitude (deg N)': lat,
@@ -138,6 +139,7 @@ def _check_station_data(station, dataset, start_date, end_date):
                 print(f"Elements {', '.join(not_found)} not available at {station} for dates {start_date}-{end_date}.")
                 print(f"Available elements: {', '.join(vars_in_dataset)}")
             lon, lat = data['results'][0]['location']['coordinates']
+            name = data['results'][0]['stations'][0]['name']
             station_start_date = data['results'][0]['startDate']
             if pd.to_datetime(start_date) < pd.to_datetime(station_start_date):
                 start_date = station_start_date.split('T')[0]
@@ -146,7 +148,7 @@ def _check_station_data(station, dataset, start_date, end_date):
             if pd.to_datetime(end_date) > pd.to_datetime(station_end_date):
                 end_date = station_end_date.split('T')[0]
                 print(f"Adjusted end date to {end_date} at station {station} based on available data.")
-            return vars_in_dataset, lon, lat, start_date, end_date
+            return vars_in_dataset, lon, lat, start_date, end_date, name
     elif request.status_code == 500:
         print(f"Failed to retrieve data from {station}.")
         print(f"{request.status_code}: {request.json()['errorMessage']}")
@@ -179,23 +181,30 @@ if __name__ == '__main__':
     requested_end_date = args['end']
     path = args['path']
 
-    if info != 'false':
+    try:
+        pd.to_datetime(requested_start_date, format='%Y-%m-%d')
+        pd.to_datetime(requested_end_date, format='%Y-%m-%d')
+    except ValueError:
+        raise ValueError("Invalid date. Please use YYYY-MM-DD format.")
+
+    if info:
         for station in stations:
             # get variables and station info for requested station and date range
             try:
-                vars, lon, lat, start_date, end_date = _check_station_data(
+                vars, lon, lat, start_date, end_date, name = _check_station_data(
                     station, dataset, requested_start_date, requested_end_date
                 )
             except TypeError:
                 continue
             print(f"Station: {station}")
+            print(f"Station name: {name}")
             print(f"Variables: {', '.join(vars)}")
             print(f"Longitude: {lon}")
             print(f"Latitude: {lat}")
             print(f"Start date: {start_date}")
             print(f"End date: {end_date}")
             print(f"Site URL: https://www.ncdc.noaa.gov/cdo-web/datasets/GHCND/stations/GHCND:{station}/detail")
-    elif info == 'false':
+    else:
         for station in stations:
             # get variables and station info for requested station and date range
             try:
@@ -243,7 +252,7 @@ if __name__ == '__main__':
             data = data.rename({s: s.lower() for s in list(data.keys())})
 
             # add metadata
-            data.attrs = _get_global_attrs(dataset, station, lon, lat, start_date, end_date)
+            data.attrs = _get_global_attrs(dataset, station, lon, lat, start_date, end_date, name)
             for s in data:
                 data[s].attrs = _get_data_attrs()[s]
 
