@@ -11,9 +11,9 @@ def _parse_args():
         description='Retrieve daily summaries from NCEI data service API and save to netCDF file.'
     )
     parser.add_argument('station', metavar='station', type=str, nargs='+',
-                        help='NCEI station ID (multiple stations can be separated by commas)')
+                        help='NCEI station ID (multiple stations can be separated by spaces)')
     parser.add_argument('-i', '--info', action=argparse.BooleanOptionalAction,
-                        help='Get station information only (doesn\'t retrieve data).')
+                        help='Get station information only (default --no-info).')
     parser.add_argument('-s', '--start', type=str, metavar='start', default='1750-01-01',
                         help='Start date in YYYY-MM-DD format (default: 1750-01-01)')
     parser.add_argument('-e', '--end', type=str, metavar='end', default=pd.Timestamp.now().strftime('%Y-%m-%d'),
