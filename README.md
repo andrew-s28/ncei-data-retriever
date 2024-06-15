@@ -14,7 +14,7 @@ Assuming you have [Python](https://docs.python.org/3/) and [conda](https://conda
     cd ncei-data-retriever/
     ```
 
-2. Create and activate a virtual environment using [conda](https://conda.io/projects/conda/en/latest/index.html):
+2. Create and activate a [conda](https://conda.io/projects/conda/en/latest/index.html) environment:
     ```
     conda env create -f environment.yml
     conda activate ncei
