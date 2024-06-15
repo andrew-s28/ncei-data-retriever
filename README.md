@@ -33,12 +33,12 @@ TMIN (daily minimum temperature), TMAX (daily minimum temperature), PRCP (daily 
 Only a station ID is required. You can search for stations using the [NCEI Climate Data Online search tool](https://www.ncdc.noaa.gov/cdo-web/search).
 Multiple stations can be included, separated by a space:
 ```
-python retrieve_daily_summaries.py USC00351877 USC00351877
+python ./scripts/retrieve_daily_summaries.py USC00351877 USW00014820
 ```
 
 Find help using the `--help` flag:
 ```
-python retrieve_daily_summaries.py --help
+python ./scripts/retrieve_daily_summaries.py --help
 ```
 ```
 usage: retrieve_daily_summaries.py [-h] [-i info] [-s start] [-e end] [-p path] station
