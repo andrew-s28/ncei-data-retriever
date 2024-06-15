@@ -22,7 +22,7 @@ Assuming you have [Python](https://docs.python.org/3/) and [conda](https://conda
 
 3. You can now retrieve data:
     ```
-    python ./scripts/retrieve_daily_summaries.py USC00351877 -s 2017-15-08 -e 2020-12-16 -p ./data
+    python ./scripts/retrieve_daily_summaries.py USC00351877 -s 2017-08-15 -e 2020-12-16 -p ./data
     ```
 
 ## Usage
