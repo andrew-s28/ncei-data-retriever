@@ -1,4 +1,4 @@
-# ncei_retrieve_daily_summaries.py
+# NCEI Data Retriever
 
 This package provides a wrapper over the [NCEI Data Service API](https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation) 
 to retrieve daily weather summaries from the National Centers for Environmental Information (NCEI) database. This simplifies access to basic climate
