@@ -1,0 +1,12 @@
+name: ncei
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - pip
+  - pip:
+    - requests
+    - xarray[io]
