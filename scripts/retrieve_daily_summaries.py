@@ -26,6 +26,7 @@ def _parse_args():
 def _get_global_attrs(dataset, station, lon, lat, start_date, end_date):
     global_attrs = {
         'station': station,
+        'station_page': f"https://www.ncdc.noaa.gov/cdo-web/datasets/GHCND/stations/GHCND:{station}/detail",
         'station_longitude (deg E)': lon,
         'station_latitude (deg N)': lat,
         'dataset': dataset,
@@ -249,5 +250,7 @@ if __name__ == '__main__':
             # save to netcdf
             if not os.path.exists(path):
                 os.makedirs(path)
-            data.to_netcdf(os.path.join(path, f'{station}_{dataset}_{start_date}_{end_date}.nc'))
-            print(f"Saved data to {os.path.join(path, f'{station}_{dataset}_{start_date}_{end_date}.nc')}")
+            save_path = os.path.join(path, f'{station}_{dataset}_{start_date}_{end_date}.nc')
+            data.to_netcdf(save_path)
+            save_path = save_path.replace('\\', '\\\\')  # escape backslashes for Windows paths
+            print(f"Saved data to {save_path}")
