@@ -50,3 +50,8 @@ build/
 *.xls
 *.xlsx
 *.nc
+
+# Images
+*.jpg
+*.jpeg
+*.png

@@ -14,6 +14,8 @@ def _parse_args():
                         help='NCEI station ID (multiple stations can be separated by spaces)')
     parser.add_argument('-i', '--info', action=argparse.BooleanOptionalAction,
                         help='Get station information only (default --no-info).')
+    parser.add_argument('-a', '--all', action=argparse.BooleanOptionalAction,
+                        help='Retrieve all available variables for station(s) (default --no-all).')
     parser.add_argument('-s', '--start', type=str, metavar='start', default='1750-01-01',
                         help='Start date in YYYY-MM-DD format (default: 1750-01-01)')
     parser.add_argument('-e', '--end', type=str, metavar='end', default=pd.Timestamp.now().strftime('%Y-%m-%d'),
@@ -39,19 +41,111 @@ def _get_global_attrs(dataset, station, lon, lat, start_date, end_date, name):
     return global_attrs
 
 
-def _get_data_attrs():
+def _get_soil_temps():
+    soil_temps = {}
+    ground_cover = [
+        'unknown',
+        'grass',
+        'fallow',
+        'bare ground',
+        'brome grass',
+        'sod',
+        'straw multch',
+        'grass muck',
+        'bare muck',
+    ]
+    depth_codes = [
+        '5',
+        '10',
+        '20',
+        '50',
+        '100',
+        '150',
+        '180',
+    ]
+    for i, ground in enumerate(ground_cover):
+        for j, depth in enumerate(depth_codes):
+            soil_temps.update({
+                f'sn{i:02d}{j+1:02d}': {
+                    'units': 'degrees_Celsius',
+                    'standard_name': 'soil_temperature',
+                    'long_name': 'minimum soil temperature at {depth} depth under {ground_cover}',
+                    'depth': f'{depth} cm',
+                    'ground_cover': ground,
+                    'cell_methods': 'time: minimum (interval: 1 day)'
+                }
+            })
+            soil_temps.update({
+                f'sx{i:02d}{j+1:02d}': {
+                    'units': 'degrees_Celsius',
+                    'standard_name': 'soil_temperature',
+                    'long_name': 'maximum soil temperature at {depth} depth under {ground_cover}',
+                    'depth': f'{depth} cm',
+                    'ground_cover': ground,
+                    'cell_methods': 'time: maximum (interval: 1 day)'
+                }
+            })
+    return soil_temps
+
+
+def _get_weather_types():
+    weather_codes = {}
+    weather_types = [
+        'Fog, ice fog, or freezing fog (may include heavy fog)',
+        'Heavy fog or heaving freezing fog (not always distinguished from fog)',
+        'Thunder',
+        'Ice pellets, sleet, snow pellets, or small hail',
+        'Hail (may include small hail)',
+        'Glaze or rime',
+        'Dust, volcanic ash, blowing dust, blowing sand, or blowing obstruction',
+        'Smoke or haze',
+        'Blowing or drifting snow',
+        'Tornado, waterspout, or funnel cloud',
+        'High or damaging winds',
+        'Blowing spray',
+        'Mist',
+        'Drizzle',
+        'Freezing drizzle',
+        'Rain (may include freezing rain, drizzle, and freezing drizzle)',
+        'Freezing rain',
+        'Snow, snow pellets, snow grains, or ice crystals',
+        'Unknown source of precipitation',
+        'not used',
+        'Ground fog',
+        'Ice fog or freezing fog',
+    ]
+    for i in range(1, 23):
+        weather_codes.update({
+            f'wt{i:02d}': {
+                'long_name': 'weather type',
+                'type': weather_types[i-1],
+            }
+        })
+        if i == 1 or i == 3 or i == 7 or i == 18 or i == 20:
+            weather_codes.update({
+                f'wv{i:02d}': {
+                    'long_name': 'weather in the vincinity',
+                    'type': weather_types[i-1],
+                }
+            })
+    return weather_codes
+
+
+def _get_data_attrs(all_vars=False):
     data_attrs = {
         'tmin': {
-            'units': 'degrees Celsius',
+            'units': 'degrees_Celsius',
             'standard_name': 'air_temperature',
             'long_name': 'daily minimum air temperature',
             'cell_methods': 'time: minimum (interval: 1 day)',
+            'units_metadata': 'on-scale',
         },
         'tmax': {
-            'units': 'degrees Celsius',
+            'units': 'degrees_Celsius',
             'standard_name': 'air_temperature',
             'long_name': 'daily maximum air temperature',
             'cell_methods': 'time: maximum (interval: 1 day)',
+            'units_metadata': 'on-scale',
         },
         'prcp': {
             'units': 'mm',
@@ -72,6 +166,330 @@ def _get_data_attrs():
             'cell_methods': 'time: point',
         },
     }
+    if all_vars:
+        data_attrs.update({
+            'acmc': {
+                'units': 'percent',
+                'standard_name': 'cloud_area_fraction',
+                'long_name': 'average cloudiness midnight to midnight',
+                'cell_methods': 'time: mean (interval: 1 day)',
+                'method': 'ceilometer',
+            },
+            'acmh': {
+                'units': 'percent',
+                'standard_name': 'cloud_area_fraction',
+                'long_name': 'average cloudiness midnight to midnight',
+                'cell_methods': 'time: mean (interval: 1 day)',
+                'method': 'manual',
+            },
+            'acsc': {
+                'units': 'percent',
+                'standard_name': 'cloud_area_fraction',
+                'long_name': 'average cloudiness sunrise to sunset',
+                'method': 'ceilometer',
+            },
+            'acsh': {
+                'units': 'percent',
+                'standard_name': 'cloud_area_fraction',
+                'long_name': 'average cloudiness sunrise to sunset',
+                'method': 'manual',
+            },
+            'adpt': {
+                'units': 'degrees_Celsius',
+                'standard_name': 'dew_point_temperature',
+                'long name': 'average dew point temperature for the day',
+                'cell_methods': 'time: mean (interval: 1 day)',
+                'units_metadata': 'on-scale',
+            },
+            'aslp': {
+                'units': 'hPa',
+                'standard_name': 'air_pressure_at_sea_level',
+                'long_name': 'average sea level pressure for the day',
+                'cell_methods': 'time: mean (interval: 1 day)',
+            },
+            'astp': {
+                'units': 'hPa',
+                'standard_name': 'air_pressure',
+                'long_name': 'average station pressure for the day',
+                'cell_methods': 'time: mean (interval: 1 day)',
+            },
+            'awbt': {
+                'units': 'degrees_Celsius',
+                'standard_name': 'wet_bulb_temperature',
+                'long_name': 'average wet bulb temperature for the day',
+                'cell_methods': 'time: mean (interval: 1 day)',
+                'units_metadata': 'on-scale',
+            },
+            'awdr': {
+                'units': 'degrees',
+                'standard_name': 'wind_from_direction',
+                'long_name': 'average wind direction for the day',
+                'cell_methods': 'time: mean (interval: 1 day)',
+                'units_metadata': 'direction_cw_from_north',
+            },
+            'awnd': {
+                'units': 'm/s',
+                'standard_name': 'wind_speed',
+                'long_name': 'average wind speed for the day',
+                'cell_methods': 'time: mean (interval: 1 day)',
+            },
+            'daev': {
+                'units': 'days',
+                'standard_name': 'number_of_days_in_evaporation_observation',
+                'long_name': 'number of days included in the multiday evaporation total (mdev)',
+            },
+            'dapr': {
+                'units': 'days',
+                'standard_name': 'number_of_days_in_precipitation_observation',
+                'long_name': 'number of days included in the multiday precipitation total (mdpr)',
+            },
+            'dasf': {
+                'units': 'days',
+                'standard_name': 'number_of_days_in_snowfall_observation',
+                'long_name': 'number of days included in the multiday snowfall total (mdsf)',
+            },
+            'datn': {
+                'units': 'days',
+                'standard_name': 'number_of_days_in_min_temperature_observation',
+                'long_name': 'number of days included in the multiday minimum temperature (mdtn)',
+            },
+            'datx': {
+                'units': 'days',
+                'standard_name': 'number_of_days_in_max_temperature_observation',
+                'long_name': 'number of days included in the multiday maximum temperature (mdtx)',
+            },
+            'dawm': {
+                'units': 'days',
+                'standard_name': 'number_of_days_in_wind_movement_observation',
+                'long_name': 'number of days included in the multiday wind movement (mdwm)',
+            },
+            'dwpr': {
+                'units': 'days',
+                'standard_name': 'number_of_days_with_nonzero_precipitation_in_precipitation_observation',
+                'long_name': 'number of days with non-zero precipitation included in the multiday precipitation total (mdpr)',
+            },
+            'evap': {
+                'units': 'mm',
+                'standard_name': 'lwe_thickness_of_water_evaporation_amount',
+                'long_name': 'daily total evaporation from evaporation pan',
+                'cell_methods': 'time: sum (interval: 1 day)',
+            },
+            'fmtm': {
+                'units': 'time_of_day',
+                'standard_name': 'time_of_fastest_1min_wind',
+                'long_name': 'time of fastest 1-minute wind speed',
+                'units_metadata': 'time_format_HHMM',
+            },
+            'frgb': {
+                'units': 'cm',
+                'standard_name': 'depth_at_base_of_unfrozen_ground',
+                'long_name': 'depth of base of frozen ground layer',
+            },
+            'frgt': {
+                'units': 'cm',
+                'standard_name': 'depth_at_top_of_frozen_ground_layer',
+                'long_name': 'depth of top of frozen ground layer',
+            },
+            'frth': {
+                'units': 'cm',
+                'standard_name': 'lwe_thickness_of_frozen_water_content_of_soil_layer',
+                'long_name': 'thickness of frozen ground layer',
+            },
+            'gaht': {
+                'units': 'cm',
+                'standard_name': 'difference_between_river_and_gauge_height',
+                'long_name': 'difference between river and gauge height',
+            },
+            'mdev': {
+                'units': 'mm',
+                'standard_name': 'lwe_thickness_of_water_evaporation_amount',
+                'long_name': 'multiday evaporation total (use with daev)',
+                'cell_methods': 'time: sum (interval: see variable daev)',
+            },
+            'mdpr': {
+                'units': 'mm',
+                'standard_name': 'lwe_thickness_of_precipitation_amount',
+                'long_name': 'multiday precipitation total (use with dapr)',
+                'cell_methods': 'time: sum (interval: see variable dapr)',
+            },
+            'mdsf': {
+                'units': 'mm',
+                'standard_name': 'lwe_thickness_of_snowfall_amount',
+                'long_name': 'multiday snowfall total (use with dasf)',
+                'cell_methods': 'time: sum (interval: see variable dasf)',
+            },
+            'mdtn': {
+                'units': 'degrees_Celsius',
+                'standard_name': 'air_temperature',
+                'long_name': 'multiday minimum temperature (use with datn)',
+                'cell_methods': 'time: minimum (interval: see variable datn)',
+            },
+            'mdtx': {
+                'units': 'degrees_Celsius',
+                'standard_name': 'air_temperature',
+                'long_name': 'multiday maximum temperature (use with datx)',
+                'cell_methods': 'time: maximum (interval: see variable datx)',
+            },
+            'mdwm': {
+                'units': 'km',
+                'standard_name': 'wind_movement',
+                'long_name': 'multiday wind movement (use with dawm)',
+                'cell_methods': 'time: sum (interval: see variable dawm)',
+            },
+            'mnpn': {
+                'units': 'degrees_Celsius',
+                'standard_name': 'temperature_in_evaporation_pan',
+                'long_name': 'minimum temperature in evaporation pan',
+                'cell_methods': 'time: minimum (interval: 1 day)',
+            },
+            'mxpn': {
+                'units': 'degrees_Celsius',
+                'standard_name': 'temperature_in_evaporation_pan',
+                'long_name': 'maximum temperature in evaporation pan',
+                'cell_methods': 'time: maximum (interval: 1 day)',
+            },
+            'pgtm': {
+                'units': 'time_of_day',
+                'standard_name': 'time_of_peak_wind_gust',
+                'long_name': 'time of peak wind gust',
+                'units_metadata': 'time_format_HHMM',
+            },
+            'psun': {
+                'units': 'percent',
+                'standard_name': 'sunshine_fraction',
+                'long_name': 'percent of possible sunshine',
+            },
+            'rhav': {
+                'units': 'percent',
+                'standard_name': 'relative_humidity',
+                'long_name': 'average relative humidity for the day',
+                'cell_methods': 'time: mean (interval: 1 day)',
+            },
+            'rhmn': {
+                'units': 'percent',
+                'standard_name': 'relative_humidity',
+                'long_name': 'minimum relative humidity for the day',
+                'cell_methods': 'time: minimum (interval: 1 day)',
+            },
+            'rhmx': {
+                'units': 'percent',
+                'standard_name': 'relative_humidity',
+                'long_name': 'maximum relative humidity for the day',
+                'cell_methods': 'time: maximum (interval: 1 day)',
+            },
+            'taxn': {
+                'units': 'degrees_Celsius',
+                'standard_name': 'air_temperature',
+                'long_name': 'average temperature for the day computed as tmax + tmin / 2',
+                'cell_methods': 'time: mean (interval: 1 day)',
+            },
+            'tavg': {
+                'units': 'degrees_Celsius',
+                'standard_name': 'air_temperature',
+                'long_name': 'average temperature for the day from hourly observations',
+                'cell_methods': 'time: mean (interval: 1 day)',
+            },
+            'thic': {
+                'units': 'mm',
+                'standard_name': 'floating_ice_thickness',
+                'long_name': 'thickness of ice on water',
+            },
+            'tobs': {
+                'units': 'degrees_Celsius',
+                'standard_name': 'air_temperature',
+                'long_name': 'temperature at the time of observation',
+            },
+            'tsun': {
+                'units': 'minutes',
+                'standard_name': 'sunshine_duration',
+                'long_name': 'total sunshine duration for the day',
+                'cell_methods': 'time: sum (interval: 1 day)',
+            },
+            'wdf1': {
+                'units': 'degrees',
+                'standard_name': 'wind_from_direction',
+                'long_name': 'direction of fastest 1-minute wind',
+                'units_metadata': 'direction_cw_from_north',
+            },
+            'wdf2': {
+                'units': 'degrees',
+                'standard_name': 'wind_from_direction',
+                'long_name': 'direction of fastest 2-minute wind',
+                'units_metadata': 'direction_cw_from_north',
+            },
+            'wdf5': {
+                'units': 'degrees',
+                'standard_name': 'wind_from_direction',
+                'long_name': 'direction of fastest 5-minute wind',
+                'units_metadata': 'direction_cw_from_north',
+            },
+            'wdfg': {
+                'units': 'degrees',
+                'standard_name': 'wind_from_direction',
+                'long_name': 'direction of peak gust',
+                'units_metadata': 'direction_cw_from_north',
+            },
+            'wdfi': {
+                'units': 'degrees',
+                'standard_name': 'wind_from_direction',
+                'long_name': 'direction of highest instantaneous wind',
+                'units_metadata': 'direction_cw_from_north',
+            },
+            'wdfm': {
+                'units': 'degrees',
+                'standard_name': 'wind_from_direction',
+                'long_name': 'fastest mile wind direction',
+                'units_metadata': 'direction_cw_from_north',
+            },
+            'wdmv': {
+                'units': 'km',
+                'standard_name': 'wind_movement',
+                'long_name': 'wind movement for the day',
+                'cell_methods': 'time: sum (interval: 1 day)',
+            },
+            'wesd': {
+                'units': 'mm',
+                'standard_name': 'lwe_thickness_of_surface_snow_amount',
+                'long_name': 'water equivalent of snow on the ground',
+            },
+            'wesf': {
+                'units': 'mm',
+                'standard_name': 'lwe_thickness_of_snowfall_amount',
+                'long_name': 'water equivalent of snowfall',
+            },
+            'wsf1': {
+                'units': 'm/s',
+                'standard_name': 'wind_speed',
+                'long_name': 'fastest 1-minute wind speed',
+            },
+            'wsf2': {
+                'units': 'm/s',
+                'standard_name': 'wind_speed',
+                'long_name': 'fastest 2-minute wind speed',
+            },
+            'wsf5': {
+                'units': 'm/s',
+                'standard_name': 'wind_speed',
+                'long_name': 'fastest 5-minute wind speed',
+            },
+            'wsfg': {
+                'units': 'm/s',
+                'standard_name': 'wind_speed',
+                'long_name': 'peak gust wind speed',
+            },
+            'wsfi': {
+                'units': 'm/s',
+                'standard_name': 'wind_speed',
+                'long_name': 'highest instantaneous wind speed',
+            },
+            'wsfm': {
+                'units': 'm/s',
+                'standard_name': 'wind_speed',
+                'long_name': 'fastest mile wind speed',
+            },
+        })
+        data_attrs.update(_get_weather_types())
+        data_attrs.update(_get_soil_temps())
     return data_attrs
 
 
@@ -83,11 +501,12 @@ def _construct_url(dataset, station, start_date, end_date, search=False):
     return url
 
 
-def _check_station_data(station, dataset, start_date, end_date):
+def _check_station_data(station, dataset, start_date, end_date, all_vars=False):
     # definitely need to find a better way to break this one up
     # core elements for daily summaries dataset
     # see also https://www.ncei.noaa.gov/pub/data/cdo/documentation/GHCND_documentation.pdf
-    vars = ['TMIN', 'TMAX', 'PRCP', 'SNOW', 'SNWD']
+    if not all_vars:
+        vars = ['TMIN', 'TMAX', 'PRCP', 'SNOW', 'SNWD']
 
     # check if station exists and has data for any dates
     url = _construct_url(dataset, station, '1750-01-01', pd.Timestamp.now().strftime("%Y-%m-%d"), search=True)
@@ -127,7 +546,11 @@ def _check_station_data(station, dataset, start_date, end_date):
         else:
             # otherwise, get available variables for station and date range
             data_type_ids = [d['id'] for d in data['results'][0]['dataTypes']]
-            vars_in_dataset = [var for var in vars if var in data_type_ids]
+            if not all_vars:
+                vars_in_dataset = [var for var in vars if var in data_type_ids]
+            else:
+                vars_in_dataset = data_type_ids
+                vars = vars_in_dataset
             if len(vars_in_dataset) == 0:
                 print(f"The station exists {station} and has data, but no core elements available.")
                 print("Core elements include: TMIN, TMAX, PRCP, SNOW, SNWD")
@@ -177,6 +600,7 @@ if __name__ == '__main__':
 
     stations = args['station']
     info = args['info']
+    all_vars = args['all']
     requested_start_date = args['start']
     requested_end_date = args['end']
     path = args['path']
@@ -192,7 +616,7 @@ if __name__ == '__main__':
             # get variables and station info for requested station and date range
             try:
                 vars, lon, lat, start_date, end_date, name = _check_station_data(
-                    station, dataset, requested_start_date, requested_end_date
+                    station, dataset, requested_start_date, requested_end_date, all_vars=all_vars
                 )
             except TypeError:
                 continue
@@ -211,7 +635,7 @@ if __name__ == '__main__':
                 # a bit of a hack, function returns None if station or date range is invalid,
                 # so it will thrown a TypeError when trying to unpack NoneType object
                 vars, lon, lat, start_date, end_date, name = _check_station_data(
-                    station, dataset, requested_start_date, requested_end_date
+                    station, dataset, requested_start_date, requested_end_date, all_vars=all_vars
                 )
             except TypeError:
                 continue
@@ -254,12 +678,15 @@ if __name__ == '__main__':
             # add metadata
             data.attrs = _get_global_attrs(dataset, station, lon, lat, start_date, end_date, name)
             for s in data:
-                data[s].attrs = _get_data_attrs()[s]
+                data[s].attrs = _get_data_attrs(all_vars=all_vars)[s]
 
             # save to netcdf
             if not os.path.exists(path):
                 os.makedirs(path)
-            save_path = os.path.join(path, f'{station}_{dataset}_{start_date}_{end_date}.nc')
+            if all_vars:
+                save_path = os.path.join(path, f'{station}_{dataset}_{start_date}_{end_date}_all-vars.nc')
+            else:
+                save_path = os.path.join(path, f'{station}_{dataset}_{start_date}_{end_date}_core-vars.nc')
             data.to_netcdf(save_path)
             save_path = save_path.replace('\\', '\\\\')  # escape backslashes for Windows paths
             print(f"Saved data to {save_path}")
